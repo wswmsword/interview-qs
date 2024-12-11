@@ -9,81 +9,78 @@
 import { EPageType, EMessage } from '../utils';
 import i18n from '../i18n';
 
-mockplus.ui.onmessage = (msg?: IMessage) => {
-  if (msg?.type === 'clear-layer') {
+mockplus.ui.onmessage = (msg: IMessage) => {
+  if (msg.type === 'clear-layer') { // msg 必传，访问 msg.type 无需可选链
     new ClearLayer(msg.data);
   }
 };
 
 class ClearLayer {
   pages: Page[];
-  selectedMenu: string[];    
+  selectedMenuTxt: string[]; // 选中的选项内容文字
   deleteLayerIds: string[] = []; 
 
   constructor({ menuList, pageType }: IClearLayerOption ) {
-    this.selectedMenu = menuList
+    this.selectedMenuTxt = menuList
                          .filter((option: IMenu) => option.checked)
                          .map((option: IMenu) => option.text);
 
-    this.pages = this.setPages(pageType);
+    this.setPages(pageType);
 
     this.clearLayerTree();
   }
 
 
   private setPages(pageType: EPageType): Page[] {
-    const pages = [];
-    if (pageType == EPageType.currentPage) {
-      pages.push(mockplus.currentPage);
-    } else if (pageType == EPageType.allPage) {
-      pages.push(...mockplus.root.pages);
-    }
-
-    return pages;
+    const typeMap = new Map([ // Map 可看作键值对数据库，这种情况比 if 更易读，另一方面 if 有更优的性能，需要对比平衡
+      [EPageType.currentPage, mockplus.currentPage],
+      [EPageType.allPage, mockplus.root.pages],
+    ])
+    this.pages = [].concat(typeMap.get(pageType));
   }
- 
+
   private clearLayerTree(): void {
     this.pages.forEach((page: Page) => {
       this.mapLayerTree(page.layers);
     });
 
     try {
-      if (!this.deleteLayerIds.length) {
+      if (this.deleteLayerIds.length === 0) { // 全等的意义明确
         this.postMessage(i18n('clear.noClearLayerYet'), EMessage.text);
         return;
       }
 
       this.deleteLayerIds.forEach((id: string) => {
-        mockplus.findLayerById(id).remove();
+        const layer = mockplus.findLayerById(id); // layer 可能为 null
+        if (layer) layer.remove();
       });
 
       this.deleteLayerIds = [];
 
+      this.postMessage(i18n('clear.success'), EMessage.success);
+      mockplus.commitUndo();
     } catch (err) {
       this.postMessage(i18n('clear.fail'), EMessage.fail);
       console.error('err', err);
     }
-
-    this.postMessage(i18n('clear.success'), EMessage.success);
-    mockplus.commitUndo();
   }
 
   private mapLayerTree(layers: Layer[]): void {
+    if (layers == null || layers.length === 0) return; // 递归出口放在头部，利于理解
     layers.forEach((layer: Layer) => {
-      if (layer.layers?.length > 0) {
-        this.mapLayerTree(layer.layers);
-      }
+      this.mapLayerTree(layer.layers);
       this.handleLayers(layer);
     });
   }
 
 
   private handleLayers(layer: Layer): void {
-    if (this.selectedMenu.includes(i18n('options.hidden')) && layer.hidden ) {
+    if (layer.hidden && !layer.removed &&
+      this.selectedMenuTxt.includes(i18n('options.hidden'))) { // 布尔值放在条件头部，减少计算量提高性能
       this.deleteLayerIds.push(layer.id);
     }
-
-    if (this.selectedMenu.includes(i18n('options.locked')) && layer.locked ) {
+    else if (layer.locked && !layer.removed &&
+      this.selectedMenuTxt.includes(i18n('options.locked'))) { // 使用 else if 避免重复添加 layer id
       this.deleteLayerIds.push(layer.id);
     }
   }
@@ -98,7 +95,7 @@ API：
 declare global {
   const mockplus: PluginAPI;
   readonly ui: UIAPI;
- 
+
   interface PluginAPI {
     currentPage: Page;  // 当前页面
     readonly root: Document;  // 当前文档
@@ -108,17 +105,17 @@ declare global {
   }
 
   interface UIAPI {
-    onmessage(message: any): void;  // 接收消息
-    postMessage(pluginMessage: any, options?: UIPostMessageOptions);  // 发送消息
+    onmessage(message: IMessage): void;  // 接收消息
+    postMessage(pluginMessage: string, options?: UIPostMessageOptions);  // 发送消息
   }
-  
+
   interface UIPostMessageOptions {}
 
   interface Document {
     readonly appID: string;
     readonly pages: ReadonlyArray<Page>;  // 项目中的所有页面
   }
-  
+
 
   // 图层结构
   interface Layer {
