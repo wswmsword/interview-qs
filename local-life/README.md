@@ -7,7 +7,7 @@
 
 </details>
 
-> 本项目的前后端产品文档为 [Product.md](./Product.md)，并由 ChatGPT5.5 和 Opus4.8 基于产品文档开发，对应的提示词对话存放在 [Prompt_codex.md](./Prompt_codex.md) 和 [./Prompt_claude.md](./Prompt_claude.md) 中。
+> 本项目的前后端产品文档为 [Product.md](./Product.md)，并由 ChatGPT5.5 和 Opus4.8 基于产品文档开发，对应的提示词对话存放在 [Prompt_codex.md](./Prompt_codex.md) 和 [Prompt_claude.md](./Prompt_claude.md) 中。
 
 本仓库包含一个无数据库的 Django REST API，以及一个在构建期间读取该
 API、静态生成商户详情页的 Next.js 前端。
