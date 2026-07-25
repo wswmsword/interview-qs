@@ -4,7 +4,6 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
-  FlatList,
   Image,
   ScrollView,
   StyleSheet,
@@ -25,16 +24,9 @@ export default function DetailScreen() {
   }>();
   const [imgs, setI] = useState<string[]>([]);
 
-  const renderItem = ({ item }: { item: string }) => (
-    <Image
-      source={{ uri: item }}
-      style={[styles.image, styles.item, styles.gridItem]}
-    />
-  );
-
   useEffect(() => {
     fetch(
-      `https://app.ticketmaster.com/discovery/v2/events/${id}?apikey=o0Q4fWz04Fvb8EAIpArOT0lk3rhAaofe`,
+      `https://app.ticketmaster.com/discovery/v2/events/${id}?apikey=${process.env.EXPO_PUBLIC_TM_KEY}`,
     )
       .then((res) => res.json())
       .then((res) => {
@@ -69,13 +61,22 @@ export default function DetailScreen() {
           />
         </View>
         <Text style={styles.desc}>图片详情</Text>
-        <FlatList
-          data={imgs}
-          keyExtractor={(item, id) => `${item}${id}`}
-          renderItem={renderItem}
-          numColumns={2}
-          contentContainerStyle={{ paddingBottom: 36 }}
-        />
+        <View
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            flexDirection: "row",
+            paddingBottom: 36,
+          }}
+        >
+          {imgs.map((img, id) => (
+            <Image
+              key={id}
+              source={{ uri: img }}
+              style={[styles.image, styles.item, styles.gridItem]}
+            />
+          ))}
+        </View>
       </ScrollView>
     </>
   );

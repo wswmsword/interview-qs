@@ -9,7 +9,10 @@ import {
   Image,
   StyleSheet,
   Text,
+  TextInput,
+  TextInputSubmitEditingEvent,
   TouchableOpacity,
+  View,
 } from "react-native";
 
 const { width } = Dimensions.get("window");
@@ -25,13 +28,14 @@ export default function ListToggleScreen() {
   const [isGrid, setIsGrid] = useState(false);
   const [data, setData] = useState<Item[]>([]);
   const [loadingMore, setLM] = useState(false);
+  const [searchTxt, setST] = useState("");
   const moreUrl = useRef("");
 
   const loadMore = () => {
     if (moreUrl.current === "" || moreUrl.current == null) return;
     setLM(true);
     fetch(
-      `https://app.ticketmaster.com${moreUrl.current}&apikey=o0Q4fWz04Fvb8EAIpArOT0lk3rhAaofe`,
+      `https://app.ticketmaster.com${moreUrl.current}&apikey=${process.env.EXPO_PUBLIC_TM_KEY}`,
     )
       .then((res) => res.json())
       .then((res) => {
@@ -83,7 +87,7 @@ export default function ListToggleScreen() {
 
   useEffect(() => {
     fetch(
-      "https://app.ticketmaster.com/discovery/v2/events.json?size=20&apikey=o0Q4fWz04Fvb8EAIpArOT0lk3rhAaofe",
+      `https://app.ticketmaster.com/discovery/v2/events.json?size=20&apikey=${process.env.EXPO_PUBLIC_TM_KEY}`,
     )
       .then((res) => res.json())
       .then((res) => {
@@ -142,6 +146,9 @@ export default function ListToggleScreen() {
             renderItem={renderItem}
             numColumns={isGrid ? 2 : 1}
             contentContainerStyle={{ paddingBottom: 36 }}
+            ListHeaderComponent={
+              <HeaderSearch txt={searchTxt} setTxt={setST} search={search} />
+            }
             ListFooterComponent={
               <TouchableOpacity
                 style={[styles.loadMoreBtn, loadingMore && styles.disabledMore]}
@@ -157,7 +164,79 @@ export default function ListToggleScreen() {
       </ThemedView>
     </>
   );
+
+  function search() {
+    fetch(
+      `https://app.ticketmaster.com/discovery/v2/events.json?size=20&apikey=${process.env.EXPO_PUBLIC_TM_KEY}&keyword=${searchTxt}`,
+    )
+      .then((res) => res.json())
+      .then((res) => {
+        moreUrl.current = res?._links?.next?.href;
+        setData(
+          res._embedded.events.map((e: any) => ({
+            id: e?.id,
+            image: e?.images?.[0]?.url,
+            title: e?.name,
+            date: e?.dates?.start?.dateTime,
+          })),
+        );
+      })
+      .catch((e) => {
+        console.error(e);
+      });
+  }
 }
+
+interface SearchProp {
+  txt: string;
+  setTxt: React.Dispatch<React.SetStateAction<string>>;
+  search: () => void;
+}
+
+function HeaderSearch({ txt, setTxt, search }: SearchProp) {
+  return (
+    <View style={sStyles.searchBar}>
+      <TextInput
+        style={sStyles.input}
+        onSubmitEditing={onSubmitEditing}
+        onChangeText={onChangeNumber}
+        value={txt}
+        placeholder="useless placeholder"
+        keyboardType="numeric"
+      />
+      <TouchableOpacity style={sStyles.btn}>
+        <Text>搜索</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  function onSubmitEditing(val: TextInputSubmitEditingEvent) {
+    search();
+  }
+
+  function onChangeNumber(val: string) {
+    setTxt(val);
+  }
+}
+
+const sStyles = StyleSheet.create({
+  searchBar: {
+    // display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+  },
+  input: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    padding: 10,
+    flex: 1,
+  },
+  btn: {
+    width: 58,
+  },
+});
 
 const ITEM_MARGIN = 8;
 const GRID_ITEM_WIDTH = (width - ITEM_MARGIN * 3) / 2;
